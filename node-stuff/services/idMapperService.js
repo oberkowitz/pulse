@@ -27,6 +27,15 @@ module.exports = () => {
     // maybe do some validation here??
     // seeing weird behavior with Object.keys() 8/7
     json[key] = val;
+    return this.writeJsonToFile(json);
+  }
+
+  this.setMapping = (newjson) => {
+    json = newjson;
+    return this.writeJsonToFile(json);
+  }
+
+  this.writeJsonToFile = function(json) {
     return new Promise((resolve, reject) => {
       fs.writeFile('idMap.json', JSON.stringify(json), (err) => {
         if (err) reject(err);

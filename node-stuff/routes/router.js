@@ -12,6 +12,17 @@ var router = function(app, idMapperService) {
     )
   });
 
+  app.post('/solenoids/addresses', (req, res) => {
+    if (!req.body.idMap) {
+      res.sendStatus(400).send({Error: "Did not include idmap in body of request."})
+      return;
+    }
+    idMapperService.setMapping(req.body.idMap).then(
+      (data) => { res.sendStatus(200); },
+      (err) => { res.sendStatus(400).send({Error: err})}
+    )
+  })
+
   app.get('/solenoids/:id/address', (req, res) => {
     res.json(idMapperService.getMapping(req.params.id));
   });
