@@ -7,16 +7,19 @@ $(document).ready(function() {
 });
 
 function setButtonClickEvents() {
-  $('.solenoid-go-button').click(function() {
-    var solenoid = $(this).parent().parent().parent();
-    var id = solenoid.attr("solenoid-id");
-    var val = solenoid.find("input").val();
-    if (relayAddressRegExp.test(val)) {
-      selectsolenoidLogo(id);
-      solenoid.find(".error-message").hide();
-      mapAddress(id, val);
-    } else {
-      solenoid.find(".error-message").show();
+  $('.solenoid div input').keyup( function(event) {
+    var keycode = (event.keyCode ? event.keyCode : event.which);
+    if (keycode == '13') {
+      var solenoid = $(this).parent().parent();
+      var id = solenoid.attr("solenoid-id");
+      var val = solenoid.find("input").val();
+      if (relayAddressRegExp.test(val)) {
+        selectsolenoidLogo(id);
+        solenoid.find(".error-message").hide();
+        mapAddress(id, val);
+      } else {
+        solenoid.find(".error-message").show();
+      }
     }
   });
 
@@ -38,9 +41,20 @@ function getInitialAddresses() {
   });
 }
 
+function submitAllAddresses() {
+  var newData = {};
+  $('.solenoid').each(function(i) {
+    var solenoid = $(this);
+    var id = solenoid.attr("solenoid-id");
+    var val = solenoid.find('input').val();
+    newData[id] = val;
+  });
+  mapAllAddresses(newData);
+}
+
 function writeAddressesToHearts(data) {
   for (var id in data) {
-    $('.small-img#' + id).html('').append(data[id]);
+    writeAddressToHeart(id, data[id]);
   }
 }
 
@@ -60,6 +74,21 @@ function selectsolenoidLogo(id) {
   setTimeout(function() {
     $(selectorStr).css("color", "black");
   }, 500);
+}
+
+function mapAllAddresses(map) {
+  var mydata = {
+    idMap: map
+  }
+  $.ajax({
+    type: "POST",
+    url: "solenoids/addresses",
+    data: JSON.stringify(mydata),
+    contentType: 'application/json',
+    success: function(data) {
+      writeAddressesToHearts(map);
+    }
+  })
 }
 
 function mapAddress(id, address) {
