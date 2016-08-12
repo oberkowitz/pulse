@@ -121,11 +121,18 @@ module.exports = (solenoidToRelayMap, programMap)=> {
   ]
   prompt.get(properties, function (err, result) {
     if (err) { return onErr(err); }
-    var inputId = parseInt(result.inputId, 0);
-    var outputId = parseInt(result.outputId, 0);
-    console.log('Selected device: ' + input.getPortName(inputId));
-    input.openPort(inputId);
-    output.openPort(inputId);
+    var inputId = result.inputId;
+    var outputId = result.outputId;
+    if (inputId) {
+      inputId = parseInt(result.inputId, 0);
+      console.log('Selected input device: ' + input.getPortName(inputId));
+      input.openPort(inputId);
+    }
+    if (outputId) {
+      outputId = parseInt(result.outputId, 0);
+      console.log('Selected output device: ' + output.getPortName(outputId));
+      output.openPort(inputId);
+    }
   });
   function onErr(err) {
     console.log(err);
