@@ -3,10 +3,8 @@ var SerialPort = require("serialport");
 var prompt = require("prompt");
 var FAKE_SERIAL = require("../config.js").FAKE_SERIAL;
 
-module.exports = (solenoidToRelayMap, programMap)=> {
+module.exports = (solenoidToRelayMap)=> {
   //Configure serial device
-  this.program = 104;
-  midiToSolenoidMap = programMap[this.program];
   var ser;
   // FAKE_SERIAL = tr;
   if (FAKE_SERIAL) {
@@ -47,22 +45,8 @@ module.exports = (solenoidToRelayMap, programMap)=> {
   }
 
   var buildCommand = function(note, onOff) {
-    if (!midiToSolenoidMap[note]) {
-      return;
-    } else {
-      switch (midiToSolenoidMap[note].type) {
-        case "sequence":
-          midiToSolenoidMap[note].solenoids.forEach(function(s, i) {
-            setTimeout(sendSignal, 100*i, s, onOff);
-          })
-          break;
-        case "simultaneous":
-          midiToSolenoidMap[note].solenoids.forEach(function(s) {
-            sendSignal(s, onOff);
-          })
-          break;
-      }
-    }
+    var sol = note+1;
+    sendSignal(sol, onOff);
   }
 
   // Configure Midi Input
@@ -78,14 +62,11 @@ module.exports = (solenoidToRelayMap, programMap)=> {
     console.log("Output device " + i + ":" + output.getPortName(i));
   }
 
-  var changeProgram = function(programNumber) {
-    this.program = programNumber;
-    midiToSolenoidMap = programMap[this.program];
-  }
-
   this.handleMidiMessage = function(deltaTime, message) {
     console.log('m:' + message + ' d:' + deltaTime);
-    output.sendMessage(message);
+    if (output) {
+      output.sendMessage(message);
+    }
     var status = message[0] & 0xf0;
     if (status == 0x90) {
       var note = message[1];
@@ -98,9 +79,6 @@ module.exports = (solenoidToRelayMap, programMap)=> {
     } else if (status == 0x80) {
       var note = message[1];
       buildCommand(note, 0);
-    } else if (status == 0xB0) { //TODO Program change is actually 0xC0. 0xB0 are the side launchpad buttons-- for testing
-      var program = message[1];
-      changeProgram(program);
     }
   }
   input.on('message', this.handleMidiMessage);
@@ -121,11 +99,20 @@ module.exports = (solenoidToRelayMap, programMap)=> {
   ]
   prompt.get(properties, function (err, result) {
     if (err) { return onErr(err); }
-    var inputId = parseInt(result.inputId, 0);
-    var outputId = parseInt(result.outputId, 0);
-    console.log('Selected device: ' + input.getPortName(inputId));
-    input.openPort(inputId);
-    output.openPort(inputId);
+    var inputId = result.inputId;
+    var outputId = result.outputId;
+    if (inputId) {
+      inputId = parseInt(result.inputId, 0);
+      console.log('Selected input device: ' + input.getPortName(inputId));
+      input.openPort(inputId);
+    }
+    if (outputId) {
+      outputId = parseInt(result.outputId, 0);
+      console.log('Selected output device: ' + output.getPortName(outputId));
+      output.openPort(inputId);
+    } else {
+      output = null;
+    }
   });
   function onErr(err) {
     console.log(err);
