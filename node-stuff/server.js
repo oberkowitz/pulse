@@ -12,9 +12,19 @@ var routes = require('./routes/router.js')(app, idMapperService);
 var midiSerialService;
 var initialPromises = [];
 initialPromises.push(idMapperService.getMappings());
+var midiMapPromise = new Promise((resolve, reject) => {
+  fs.readFile('midiMap.json', (err, data) => {
+    if (err) reject(err);
+    else {
+      var json = JSON.parse(data);
+      resolve(json);
+    }
+  });
+});
+initialPromises.push(midiMapPromise)
 Promise.all(initialPromises).then(
   (dataArr) => {
-    midiSerialService = require("./services/midiSerialService.js")(dataArr[0]);
+    midiSerialService = require("./services/midiSerialService.js")(dataArr[0], dataArr[1]);
     idMapperService.addListener(midiSerialService);
    },
   (err) => { process.exit(err); }

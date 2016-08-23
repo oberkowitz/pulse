@@ -3,7 +3,7 @@ var SerialPort = require("serialport");
 var prompt = require("prompt");
 var FAKE_SERIAL = require("../config.js").FAKE_SERIAL;
 
-module.exports = (solenoidToRelayMap)=> {
+module.exports = (solenoidToRelayMap, midiMap)=> {
   //Configure serial device
   var ser;
   // FAKE_SERIAL = tr;
@@ -45,7 +45,8 @@ module.exports = (solenoidToRelayMap)=> {
   }
 
   var buildCommand = function(note, onOff) {
-    var sol = note+1;
+    // var sol = note+1;
+    var sol = midiMap[note];
     sendSignal(sol, onOff);
   }
 
@@ -125,8 +126,8 @@ module.exports = (solenoidToRelayMap)=> {
 
   this.shutdown = () => {
     console.log("MidiSerialService shutdown");
-    input.closePort();
-    output.closePort();
+    if (input && input.closePort) input.closePort();
+    if (output && output.closePort) output.closePort();
   }
 
   return this;
