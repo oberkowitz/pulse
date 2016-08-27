@@ -1,7 +1,10 @@
 var midi = require("midi");
 var SerialPort = require("serialport");
 var prompt = require("prompt");
-var FAKE_SERIAL = require("../config.js").FAKE_SERIAL;
+var config = require("../config.js");
+var FAKE_SERIAL = config.FAKE_SERIAL;
+var USBSERIAL = config.USBSERIAL;
+var fs = require("fs");
 
 module.exports = (solenoidToRelayMap, midiMap)=> {
   //Configure serial device
@@ -21,11 +24,12 @@ module.exports = (solenoidToRelayMap, midiMap)=> {
     var serialProps = {
       baudRate: 19200
     };
-    ser = new SerialPort("/dev/tty.usbserial", serialProps, function (err) {
+    ser = new SerialPort(USBSERIAL, serialProps, function (err) {
       if (err) {
         console.log('Error: ', err.message);
         process.exit()
       }
+      initMidi();
     });
   }
 
@@ -38,8 +42,12 @@ module.exports = (solenoidToRelayMap, midiMap)=> {
     var relayAddress = solenoidToRelayMap[solenoidId];
     if (relayAddress) {
       var command = "!" + relayAddress + onOff + ".";
+      console.log("Writing command: " + command);
       ser.write(command, function(err) {
-        if (err) console.log('Error: ', err);
+        if (err) {
+          console.log('Error: ', err);
+          return;
+        }
       });
     }
   }
@@ -52,22 +60,13 @@ module.exports = (solenoidToRelayMap, midiMap)=> {
 
   // Configure Midi Input
   var input = new midi.input();
-  var output = new midi.output();
   var portCount = input.getPortCount();
   for (var i = 0; i < portCount; i++){
     console.log("Input device " + i + ":" + input.getPortName(i));
   }
 
-  portCount = output.getPortCount();
-  for (var i = 0; i < portCount; i++){
-    console.log("Output device " + i + ":" + output.getPortName(i));
-  }
-
   this.handleMidiMessage = function(deltaTime, message) {
     console.log('m:' + message + ' d:' + deltaTime);
-    if (output) {
-      output.sendMessage(message);
-    }
     var status = message[0] & 0xf0;
     if (status == 0x90) {
       var note = message[1];
@@ -84,40 +83,10 @@ module.exports = (solenoidToRelayMap, midiMap)=> {
   }
   input.on('message', this.handleMidiMessage);
 
-  // Use prompt to define input device
-  prompt.start();
-  var properties = [
-    {
-      name: 'inputId',
-      validator: /^[0-9]*$/,
-      warning: 'inputId must be an integer.'
-    },
-    {
-      name: 'outputId',
-      validator: /^[0-9]*$/,
-      warning: 'outputId must be an integer.'
-    }
-  ]
-  prompt.get(properties, function (err, result) {
-    if (err) { return onErr(err); }
-    var inputId = result.inputId;
-    var outputId = result.outputId;
-    if (inputId) {
-      inputId = parseInt(result.inputId, 0);
-      console.log('Selected input device: ' + input.getPortName(inputId));
-      input.openPort(inputId);
-    }
-    if (outputId) {
-      outputId = parseInt(result.outputId, 0);
-      console.log('Selected output device: ' + output.getPortName(outputId));
-      output.openPort(inputId);
-    } else {
-      output = null;
-    }
-  });
-  function onErr(err) {
-    console.log(err);
-    return 1;
+  var initMidi = () => {
+    var inputId = config.INPUT_ID;
+    console.log('Selected input device: ' + input.getPortName(inputId));
+    input.openPort(inputId);
   }
 
   this.mappingsUpdated = (newMap) => {
@@ -127,7 +96,6 @@ module.exports = (solenoidToRelayMap, midiMap)=> {
   this.shutdown = () => {
     console.log("MidiSerialService shutdown");
     if (input && input.closePort) input.closePort();
-    if (output && output.closePort) output.closePort();
   }
 
   return this;
