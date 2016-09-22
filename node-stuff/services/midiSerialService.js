@@ -22,7 +22,8 @@ module.exports = (solenoidToRelayMap, midiMap)=> {
     };
   } else {
     var serialProps = {
-      baudRate: 19200
+      baudRate: 19200,
+      bufferSize : 128*1024
     };
     ser = new SerialPort(USBSERIAL, serialProps, function (err) {
       if (err) {
